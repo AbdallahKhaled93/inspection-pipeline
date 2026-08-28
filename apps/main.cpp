@@ -5,6 +5,8 @@
 #include <string_view>
 
 #include "inspection/synthetic_source.hpp"
+#include "inspection/frame_queue.hpp"
+#include "inspection/producer.hpp"
 
 namespace {
 
@@ -28,27 +30,25 @@ void render(const inspection::Frame& frame) {
 }  // namespace
 
 int main() {
-    inspection::SyntheticSource source;
+    inspection::FrameQueue queue{4};
+    inspection::Producer producer{queue, {}, {}};
 
-    std::cout << "synthetic source -- 8 frames\n\n";
+    std::size_t processed = 0;
+    std::size_t with_object = 0;
 
-    for (int i = 0; i < 8; ++i) {
-        // Structured binding: unpack AnnotatedFrame into two named variables.
-        auto&& [frame, ground_truth] = source.next();
-
-        std::cout << "frame #" << frame.id() << "  "
-                  << frame.width() << "x" << frame.height() << "  ";
-
-        if (ground_truth) {
-            std::cout << "object " << ground_truth->width << "x" << ground_truth->height
-                      << " at (" << ground_truth->x << ", " << ground_truth->y << ")\n";
-        } else {
-            std::cout << "empty\n";
+    std::jthread consumer{[&](std::stop_token token) {
+        while (auto annotated = queue.pop(token)) {
+            ++processed;
+            if (annotated->ground_truth) { ++with_object; }
         }
+    }};
 
-        render(frame);
-        std::cout << '\n';
-    }
+    std::this_thread::sleep_for(std::chrono::seconds{2});
 
-    return 0;
+    producer.stop();
+    consumer.request_stop();
+
+    std::cout << "processed:  " << processed << '\n'
+              << "with object: " << with_object << '\n'
+              << "dropped:     " << queue.dropped_count() << '\n';
 }

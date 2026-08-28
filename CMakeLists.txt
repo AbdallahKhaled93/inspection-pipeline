@@ -10,6 +10,8 @@ target_compile_options(inspection_warnings INTERFACE
 
 add_library(inspection_core
     src/synthetic_source.cpp
+    src/frame_queue.cpp
+    src/producer.cpp
 )
 
 target_include_directories(inspection_core PUBLIC include)
