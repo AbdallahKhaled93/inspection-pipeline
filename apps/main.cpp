@@ -31,13 +31,14 @@ void render(const inspection::Frame& frame) {
 
 int main() {
     inspection::FrameQueue queue{4};
-    inspection::Producer producer{queue, {}, {}};
+    inspection::Producer producer{queue, {}, {.period = std::chrono::milliseconds{1}}};
 
     std::size_t processed = 0;
     std::size_t with_object = 0;
 
     std::jthread consumer{[&](std::stop_token token) {
         while (auto annotated = queue.pop(token)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds{10});
             ++processed;
             if (annotated->ground_truth) { ++with_object; }
         }
